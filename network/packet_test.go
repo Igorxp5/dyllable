@@ -2,10 +2,14 @@ package network
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"log"
 	"net"
+	"regexp"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 func TestRequestDiscoveryPacket(t *testing.T) {
@@ -168,7 +172,7 @@ func TestReadUntil(t *testing.T) {
 	var read []byte
 	var err error
 
-	//Test if the function returns EOF when it does not find the delimeter
+	log.Println("Test if the function returns EOF when it does not find the delimeter")
 	bufferValue = []byte("DYLLABLE-DISCOVERY")
 	buffer = bytes.NewBuffer(bufferValue)
 	read, err = readUntil(buffer, delim)
@@ -179,7 +183,7 @@ func TestReadUntil(t *testing.T) {
 		log.Fatalf("2: when the delimiter is not in the buffer, the function should return the same value in the buffer.  %v != %v", read, bufferValue)
 	}
 
-	//Test if the function allows call multiple times in the same buffer (already readed buffer)
+	log.Println("Test if the function allows call multiple times in the same buffer (already readed buffer)")
 	bufferValue = []byte("DYLLABLE-DISCOVERY\r\nTYPE: DISCOVERY\r\n\r\n")
 
 	buffer = bytes.NewBuffer(bufferValue)
@@ -207,5 +211,163 @@ func TestReadUntil(t *testing.T) {
 	read, err = readUntil(buffer, delim)
 	if err != io.EOF {
 		log.Fatalf("8: the function should return io.EOF when buffer has reached to the end")
+	}
+}
+
+func TestRequestActionPacket(t *testing.T) {
+	log.Println("Create RequestActionPacket including content")
+	actionId := 1
+	parameters := make(map[string]interface{})
+	parameters["key"] = "value"
+	parameters["key2"] = 10
+	parameters["key3"] = true
+	parameters["key4"] = 15.7
+
+	packet := NewRequestActionPacket(uint8(actionId), parameters)
+	packetString, err := packet.String()
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+
+	requestUUID := packet.RequestUUID.String()
+	match, _ := regexp.MatchString("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", requestUUID)
+
+	if !match {
+		log.Fatalf("RequestUUID is following the pattern \"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\". Current: %s", requestUUID)
+	}
+
+	expectedString := "DYLLABLE-ACTION-REQUEST\r\n" +
+		fmt.Sprintf("REQUEST-UUID: %s\r\n", requestUUID) +
+		fmt.Sprintf("ACTION-ID: %d\r\n", actionId) +
+		"\r\n" +
+		"{\"key\":\"value\",\"key2\":10,\"key3\":true,\"key4\":15.7}\r\n" +
+		"\r\n"
+
+	if packetString != expectedString {
+		t.Fatalf("RequestActionPacket String() does not "+
+			"match to the expected.\ncurrent:\n%#v.\nexpected:\n%#v\n", packetString, expectedString)
+	}
+
+	packetBytes, err := packet.Bytes()
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	expectedBytes := []byte(expectedString)
+	if !bytes.Equal(packetBytes, expectedBytes) {
+		t.Fatalf("RequestActionPacket Bytes() does not "+
+			"match to the expected.\ncurrent:\n%#v.\nexpected:\n%#v\n", packetBytes, expectedBytes)
+	}
+
+	log.Println("Create RequestActionPacket without content")
+	packet = NewRequestActionPacket(uint8(actionId), nil)
+	packetString, err = packet.String()
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+
+	requestUUID = packet.RequestUUID.String()
+	match, _ = regexp.MatchString("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", requestUUID)
+
+	if !match {
+		log.Fatalf("RequestUUID is following the pattern \"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\". Current: %s", requestUUID)
+	}
+
+	expectedString = "DYLLABLE-ACTION-REQUEST\r\n" +
+		fmt.Sprintf("REQUEST-UUID: %s\r\n", requestUUID) +
+		fmt.Sprintf("ACTION-ID: %d\r\n", actionId) +
+		"\r\n"
+
+	if packetString != expectedString {
+		t.Fatalf("RequestActionPacket String() does not "+
+			"match to the expected.\ncurrent:\n%#v.\nexpected:\n%#v\n", packetString, expectedString)
+	}
+
+	packetBytes, err = packet.Bytes()
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	expectedBytes = []byte(expectedString)
+	if !bytes.Equal(packetBytes, expectedBytes) {
+		t.Fatalf("RequestActionPacket Bytes() does not "+
+			"match to the expected.\ncurrent:\n%#v.\nexpected:\n%#v\n", packetBytes, expectedBytes)
+	}
+}
+
+func TestResponseActionPacket(t *testing.T) {
+	log.Println("Create ResponseActionPacket including content")
+
+	content := make(map[string]interface{})
+	content["key"] = "value"
+	content["key2"] = 10
+	content["key3"] = true
+	content["key4"] = 15.7
+
+	requestUUID := uuid.New()
+	packet := NewResponseActionPacket(requestUUID, false, content)
+	packetString, err := packet.String()
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+
+	match, _ := regexp.MatchString("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", requestUUID.String())
+
+	if !match {
+		log.Fatalf("RequestUUID is following the pattern \"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\". Current: %s", requestUUID)
+	}
+
+	expectedString := "DYLLABLE-ACTION-RESPONSE\r\n" +
+		fmt.Sprintf("REQUEST-UUID: %s\r\n", requestUUID) +
+		"APPROVED: False\r\n" +
+		"\r\n" +
+		"{\"key\":\"value\",\"key2\":10,\"key3\":true,\"key4\":15.7}\r\n" +
+		"\r\n"
+
+	if packetString != expectedString {
+		t.Fatalf("RequestActionPacket String() does not "+
+			"match to the expected.\ncurrent:\n%#v.\nexpected:\n%#v\n", packetString, expectedString)
+	}
+
+	packetBytes, err := packet.Bytes()
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	expectedBytes := []byte(expectedString)
+	if !bytes.Equal(packetBytes, expectedBytes) {
+		t.Fatalf("RequestActionPacket Bytes() does not "+
+			"match to the expected.\ncurrent:\n%#v.\nexpected:\n%#v\n", packetBytes, expectedBytes)
+	}
+
+	log.Println("Create ResponseActionPacket without content")
+	requestUUID = uuid.New()
+	packet = NewResponseActionPacket(requestUUID, true, nil)
+	packetString, err = packet.String()
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+
+	match, _ = regexp.MatchString("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", requestUUID.String())
+
+	if !match {
+		log.Fatalf("RequestUUID is following the pattern \"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\". Current: %s", requestUUID)
+	}
+
+	expectedString = "DYLLABLE-ACTION-RESPONSE\r\n" +
+		fmt.Sprintf("REQUEST-UUID: %s\r\n", requestUUID) +
+		"APPROVED: True\r\n" +
+		"\r\n"
+
+	if packetString != expectedString {
+		t.Fatalf("RequestActionPacket String() does not "+
+			"match to the expected.\ncurrent:\n%#v.\nexpected:\n%#v\n", packetString, expectedString)
+	}
+
+	packetBytes, err = packet.Bytes()
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	expectedBytes = []byte(expectedString)
+	if !bytes.Equal(packetBytes, expectedBytes) {
+		t.Fatalf("RequestActionPacket Bytes() does not "+
+			"match to the expected.\ncurrent:\n%#v.\nexpected:\n%#v\n", packetBytes, expectedBytes)
 	}
 }

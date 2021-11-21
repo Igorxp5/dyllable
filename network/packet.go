@@ -77,15 +77,19 @@ func (packet *RequestActionPacket) String() (out string, err error) {
 	if err != nil {
 		return
 	}
-	headers := []string{requestActionIdentifier, requestUUIDHeader, actionHeader, string(parametersJSON)}
-	out = strings.Join(headers, headerSeparator) + headerSeparator + endPacket
-	return
+	headers := []string{requestActionIdentifier, requestUUIDHeader, actionHeader}
+	out = strings.Join(headers, headerSeparator) + headerSeparator
+	if packet.Parameters != nil {
+		out += headerSeparator + string(parametersJSON) + headerSeparator
+	}
+	out += endPacket
+	return out, err
 }
 
 func (packet *RequestActionPacket) Bytes() (out []byte, err error) {
 	packetString, err := packet.String()
 	out = []byte(packetString)
-	return
+	return out, err
 }
 
 func (packet *ResponseActionPacket) String() (out string, err error) {
@@ -97,13 +101,17 @@ func (packet *ResponseActionPacket) String() (out string, err error) {
 		approved = "False"
 	}
 	approvedHeader := fmt.Sprintf("APPROVED: %s", approved)
-	parametersJSON, err := json.Marshal(packet.Content)
+	contentJSON, err := json.Marshal(packet.Content)
 	if err != nil {
 		return
 	}
-	headers := []string{responseActionIdentifier, requestUUIDHeader, approvedHeader, string(parametersJSON)}
-	out = strings.Join(headers, headerSeparator) + headerSeparator + endPacket
-	return
+	headers := []string{responseActionIdentifier, requestUUIDHeader, approvedHeader}
+	out = strings.Join(headers, headerSeparator) + headerSeparator
+	if packet.Content != nil {
+		out += headerSeparator + string(contentJSON) + headerSeparator
+	}
+	out += endPacket
+	return out, err
 }
 
 func (packet *ResponseActionPacket) Bytes() (out []byte, err error) {
