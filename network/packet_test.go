@@ -2,10 +2,12 @@ package network
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net"
+	"reflect"
 	"regexp"
 	"testing"
 
@@ -369,5 +371,117 @@ func TestResponseActionPacket(t *testing.T) {
 	if !bytes.Equal(packetBytes, expectedBytes) {
 		t.Fatalf("RequestActionPacket Bytes() does not "+
 			"match to the expected.\ncurrent:\n%#v.\nexpected:\n%#v\n", packetBytes, expectedBytes)
+	}
+}
+
+func TestParseRequestActionPacket(t *testing.T) {
+	var requestUUID = uuid.New()
+	var actionId uint8 = 1
+
+	parameters := make(map[string]interface{})
+	parameters["key"] = "value"
+	parameters["key2"] = 10.0 // by default json.Unmarshal parse JSON numbers to float64
+	parameters["key3"] = true
+	parameters["key4"] = 15.7
+
+	parametersJSON, err := json.Marshal(parameters)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+
+	packetString := "DYLLABLE-ACTION-REQUEST\r\n" +
+		fmt.Sprintf("REQUEST-UUID: %s\r\n", requestUUID) +
+		fmt.Sprintf("ACTION-ID: %d\r\n", actionId) +
+		"\r\n" +
+		string(parametersJSON) + "\r\n" +
+		"\r\n"
+
+	packetBuffer := bytes.NewBuffer([]byte(packetString))
+	packet, err := ParsePacket(packetBuffer)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	actionPacket, ok := packet.(*RequestActionPacket)
+	if !ok {
+		log.Fatalf("expected RequestActionPacket object instead of %T", packet)
+	}
+	if actionPacket.RequestUUID != requestUUID {
+		log.Fatalf("expected parsed packet REQUEST-UUID equals to \"%s\" instead of \"%s\"", requestUUID, actionPacket.RequestUUID)
+	}
+	if actionPacket.ActionId != actionId {
+		log.Fatalf("expected parsed packet ACTION-ID equals to \"%d\" instead of \"%v\"", actionId, actionPacket.ActionId)
+	}
+	if !reflect.DeepEqual(parameters, actionPacket.Parameters) {
+		log.Fatalf("expected parsed packet paramaters equals to \"%s\" instead of \"%v\"", string(parametersJSON), actionPacket.Parameters)
+	}
+}
+
+func TestParseRequestActionPacketWithoutParameters(t *testing.T) {
+	var requestUUID = uuid.New()
+	var actionId uint8 = 10
+
+	packetString := "DYLLABLE-ACTION-REQUEST\r\n" +
+		fmt.Sprintf("REQUEST-UUID: %s\r\n", requestUUID) +
+		fmt.Sprintf("ACTION-ID: %d\r\n", actionId) +
+		"\r\n"
+
+	packetBuffer := bytes.NewBuffer([]byte(packetString))
+	packet, err := ParsePacket(packetBuffer)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	actionPacket, ok := packet.(*RequestActionPacket)
+	if !ok {
+		log.Fatalf("expected RequestActionPacket object instead of %T", packet)
+	}
+	if actionPacket.RequestUUID != requestUUID {
+		log.Fatalf("expected parsed packet REQUEST-UUID equals to \"%s\" instead of \"%s\"", requestUUID, actionPacket.RequestUUID)
+	}
+	if actionPacket.ActionId != actionId {
+		log.Fatalf("expected parsed packet ACTION-ID equals to \"%d\" instead of \"%v\"", actionId, actionPacket.ActionId)
+	}
+}
+
+func TestParseInvalidRequestActionPacket(t *testing.T) {
+	var requestUUID = uuid.New()
+
+	invalidPackets := []string{
+		fmt.Sprintf("REQUEST-UUID: %s\r\n", requestUUID) +
+			"\r\n",
+		"ACTION-ID: 100\r\n" +
+			"\r\n",
+		"DYLLABLE-ACTION-REQUEST\r\n" +
+			fmt.Sprintf("REQUEST-UUID: %s\r\n", requestUUID) +
+			"\r\n",
+		"DYLLABLE-ACTION-REQUEST\r\n" +
+			"ACTION-ID: 100\r\n" +
+			"\r\n",
+		"DYLLABLE-ACTION-RQUEST\r\n" +
+			fmt.Sprintf("REQUEST-UUID: %s\r\n", requestUUID) +
+			"ACTION-ID: 100\r\n" +
+			"\r\n",
+		"DYLLABLE-ACTION-REQUEST\r\n" +
+			"ACTION-ID: 100\r\n" +
+			"{\"key\":\"value\",\"key2\":10,\"key3\":true,\"key4\":15.7}\r\n" +
+			"\r\n",
+		"DYLLABLE-ACTION-REQUEST\r\n" +
+			fmt.Sprintf("REQUEST-UUID: %s\r\n", requestUUID) +
+			"ACTION-ID: 100\r\n" +
+			"{\"key\":\"value\",key2\":10,\"key3\":true,\"key4\":15.7}\r\n" +
+			"\r\n",
+		"DYLLABLE-ACTION-REQUEST\r\n" +
+			"REQUEST-UUID: 1\r\n" +
+			"ACTION-ID: 100\r\n" +
+			"{\"key\":\"value\",\"key2\":10,\"key3\":true,\"key4\":15.7}\r\n" +
+			"\r\n",
+	}
+
+	var packetBuffer *bytes.Buffer
+	for _, packetString := range invalidPackets {
+		packetBuffer = bytes.NewBuffer([]byte(packetString))
+		_, err := ParsePacket(packetBuffer)
+		if err == nil {
+			log.Fatalf("following packet should be invalid: \n%s", packetString)
+		}
 	}
 }

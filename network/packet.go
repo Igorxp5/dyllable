@@ -136,7 +136,40 @@ func ParsePacket(buffer *bytes.Buffer) (packet Packet, err error) {
 	var headers map[string]string
 	switch strings.TrimRight(string(identifier), "\r\n") {
 	case requestActionIdentifier:
-		//TODO: Request action packet
+		var packetRequestUUID uuid.UUID
+		var packetActionId uint64
+		var parametersBytes []byte
+		var parametersJSON map[string]interface{}
+		headers, err = readHeaders(buffer)
+		if err != nil {
+			return
+		}
+		packetRequestUUIDString, ok := headers["REQUEST-UUID"]
+		if !ok {
+			return packet, errors.New("malformed packet: \"REQUEST-UUID\" header not found")
+		}
+		packetRequestUUID, err = uuid.Parse(packetRequestUUIDString)
+		if err != nil {
+			return
+		}
+		packetActionIdString, ok := headers["ACTION-ID"]
+		if !ok {
+			return packet, errors.New("malformed packet: \"ACTION-ID\" header not found")
+		}
+		packetActionId, err = strconv.ParseUint(packetActionIdString, 10, 8)
+		if err != nil {
+			return
+		}
+		parametersBytes, err = readUntil(buffer, []byte(headerSeparator))
+		if err == nil {
+			err = json.Unmarshal(parametersBytes, &parametersJSON)
+			if err != nil {
+				return
+			}
+		}
+		err = nil
+		packetObj := RequestActionPacket{packetRequestUUID, uint8(packetActionId), parametersJSON}
+		packet = &packetObj
 	case responseActionIdentifier:
 		//TODO: Response action packet
 	case discoveryIdentifier:
@@ -219,7 +252,7 @@ func readHeaders(buffer *bytes.Buffer) (headers map[string]string, err error) {
 
 func parseHeader(raw string) ([]string, error) {
 	headerValue := strings.SplitN(raw, ": ", 2)
-	if cap(headerValue) == 1 {
+	if len(headerValue) == 1 {
 		return []string{}, errors.New("invalid header line")
 	}
 	return headerValue, nil
