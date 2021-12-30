@@ -485,3 +485,135 @@ func TestParseInvalidRequestActionPacket(t *testing.T) {
 		}
 	}
 }
+
+func TestParseResponseActionPacket(t *testing.T) {
+	var requestUUID = uuid.New()
+
+	approvedValues := map[string]bool{
+		"True":  true,
+		"False": false,
+	}
+
+	content := make(map[string]interface{})
+	content["key"] = "value"
+	content["key2"] = 10.0 // by default json.Unmarshal parse JSON numbers to float64
+	content["key3"] = true
+	content["key4"] = 15.7
+
+	contentJSON, err := json.Marshal(content)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+
+	for key, approved := range approvedValues {
+		packetString := "DYLLABLE-ACTION-RESPONSE\r\n" +
+			fmt.Sprintf("REQUEST-UUID: %s\r\n", requestUUID) +
+			fmt.Sprintf("APPROVED: %s\r\n", key) +
+			"\r\n" +
+			string(contentJSON) + "\r\n" +
+			"\r\n"
+
+		packetBuffer := bytes.NewBuffer([]byte(packetString))
+		packet, err := ParsePacket(packetBuffer)
+		if err != nil {
+			log.Fatalf("%v", err)
+		}
+		responsePacket, ok := packet.(*ResponseActionPacket)
+		if !ok {
+			log.Fatalf("expected ResponseActionPacket object instead of %T", packet)
+		}
+		if responsePacket.RequestUUID != requestUUID {
+			log.Fatalf("expected parsed packet REQUEST-UUID equals to \"%s\" instead of \"%s\"", requestUUID, responsePacket.RequestUUID)
+		}
+		if responsePacket.Approved != approved {
+			log.Fatalf("expected parsed packet APPROVED equals to \"%v\" instead of \"%v\"", approved, responsePacket.Approved)
+		}
+		if !reflect.DeepEqual(content, responsePacket.Content) {
+			log.Fatalf("expected parsed packet content equals to \"%s\" instead of \"%v\"", string(contentJSON), responsePacket.Content)
+		}
+	}
+}
+
+func TestParseResponseActionPacketWithoutContent(t *testing.T) {
+	var requestUUID = uuid.New()
+
+	approvedValues := map[string]bool{
+		"True":  true,
+		"False": false,
+	}
+
+	for key, approved := range approvedValues {
+		packetString := "DYLLABLE-ACTION-RESPONSE\r\n" +
+			fmt.Sprintf("REQUEST-UUID: %s\r\n", requestUUID) +
+			fmt.Sprintf("APPROVED: %s\r\n", key) +
+			"\r\n"
+
+		packetBuffer := bytes.NewBuffer([]byte(packetString))
+		packet, err := ParsePacket(packetBuffer)
+		if err != nil {
+			log.Fatalf("%v", err)
+		}
+		responsePacket, ok := packet.(*ResponseActionPacket)
+		if !ok {
+			log.Fatalf("expected RequestActionPacket object instead of %T", packet)
+		}
+		if responsePacket.RequestUUID != requestUUID {
+			log.Fatalf("expected parsed packet REQUEST-UUID equals to \"%s\" instead of \"%s\"", requestUUID, responsePacket.RequestUUID)
+		}
+		if responsePacket.Approved != approved {
+			log.Fatalf("expected parsed packet APPROVED equals to \"%v\" instead of \"%v\"", approved, responsePacket.Approved)
+		}
+	}
+}
+
+func TestParseInvalidResponseActionPacket(t *testing.T) {
+	var requestUUID = uuid.New()
+
+	invalidPackets := []string{
+		fmt.Sprintf("REQUEST-UUID: %s\r\n", requestUUID) +
+			"\r\n",
+		"APPROVED: True\r\n" +
+			"\r\n",
+		"DYLLABLE-ACTION-RESPONSE\r\n" +
+			fmt.Sprintf("REQUEST-UUID: %s\r\n", requestUUID) +
+			"\r\n",
+		"DYLLABLE-ACTION-RESPONSE\r\n" +
+			"APPROVED: False\r\n" +
+			"\r\n",
+		"DYLLABLE-ACTION-RESPON\r\n" +
+			fmt.Sprintf("REQUEST-UUID: %s\r\n", requestUUID) +
+			"APPROVED: True\r\n" +
+			"\r\n",
+		"DYLLABLE-ACTION-RESPONSE\r\n" +
+			"APPROVED: False\r\n" +
+			"{\"key\":\"value\",\"key2\":10,\"key3\":true,\"key4\":15.7}\r\n" +
+			"\r\n",
+		"DYLLABLE-ACTION-RESPONSE\r\n" +
+			fmt.Sprintf("REQUEST-UUID: %s\r\n", requestUUID) +
+			"APPROVED: True\r\n" +
+			"{\"key\":\"value\",key2\":10,\"key3\":true,\"key4\":15.7}\r\n" +
+			"\r\n",
+		"DYLLABLE-ACTION-RESPONSE\r\n" +
+			"REQUEST-UUID: 1\r\n" +
+			"APPROVED: FAlse\r\n" +
+			"{\"key\":\"value\",\"key2\":10,\"key3\":true,\"key4\":15.7}\r\n" +
+			"\r\n",
+		"DYLLABLE-ACTION-RESPONSE\r\n" +
+			fmt.Sprintf("REQUEST-UUID: %s\r\n", requestUUID) +
+			"Approved: True\r\n" +
+			"\r\n",
+		"DYLLABLE-ACTION-RESPONSE\r\n" +
+			fmt.Sprintf("REQUEST-UUID: %s\r\n", requestUUID) +
+			"APPROVED: true\r\n" +
+			"\r\n",
+	}
+
+	var packetBuffer *bytes.Buffer
+	for _, packetString := range invalidPackets {
+		packetBuffer = bytes.NewBuffer([]byte(packetString))
+		_, err := ParsePacket(packetBuffer)
+		if err == nil {
+			log.Fatalf("following packet should be invalid: \n%s", packetString)
+		}
+	}
+}

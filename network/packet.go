@@ -171,7 +171,44 @@ func ParsePacket(buffer *bytes.Buffer) (packet Packet, err error) {
 		packetObj := RequestActionPacket{packetRequestUUID, uint8(packetActionId), parametersJSON}
 		packet = &packetObj
 	case responseActionIdentifier:
-		//TODO: Response action packet
+		var packetRequestUUID uuid.UUID
+		var packetApproved bool
+		var contentBytes []byte
+		var contentJSON map[string]interface{}
+		headers, err = readHeaders(buffer)
+		if err != nil {
+			return
+		}
+		packetRequestUUIDString, ok := headers["REQUEST-UUID"]
+		if !ok {
+			return packet, errors.New("malformed packet: \"REQUEST-UUID\" header not found")
+		}
+		packetRequestUUID, err = uuid.Parse(packetRequestUUIDString)
+		if err != nil {
+			return
+		}
+		packetApprovedString, ok := headers["APPROVED"]
+		if !ok {
+			return packet, errors.New("malformed packet: \"APPROVED\" header not found")
+		}
+		switch packetApprovedString {
+		case "True":
+			packetApproved = true
+		case "False":
+			packetApproved = false
+		default:
+			return packet, errors.New(fmt.Sprintf("malformed packet: APPROVED must be True or False"))
+		}
+		contentBytes, err = readUntil(buffer, []byte(headerSeparator))
+		if err == nil {
+			err = json.Unmarshal(contentBytes, &contentJSON)
+			if err != nil {
+				return
+			}
+		}
+		err = nil
+		packetObj := ResponseActionPacket{packetRequestUUID, packetApproved, contentJSON}
+		packet = &packetObj
 	case discoveryIdentifier:
 		headers, err = readHeaders(buffer)
 		if err != nil {
