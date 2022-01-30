@@ -20,7 +20,7 @@ func TestRequestDiscoveryPacket(t *testing.T) {
 	packet := NewRequestDiscoveryPacket(address, port)
 	packetString, err := packet.String()
 	if err != nil {
-		log.Fatalf("%v", err)
+		t.Fatalf("%v", err)
 	}
 	expectedString := "DYLLABLE-DISCOVERY\r\n" +
 		"TYPE: DISCOVERY\r\n" +
@@ -33,7 +33,7 @@ func TestRequestDiscoveryPacket(t *testing.T) {
 
 	packetBytes, err := packet.Bytes()
 	if err != nil {
-		log.Fatalf("%v", err)
+		t.Fatalf("%v", err)
 	}
 	expectedBytes := []byte(expectedString)
 	if !bytes.Equal(packetBytes, expectedBytes) {
@@ -48,7 +48,7 @@ func TestResponseDiscoveryPacket(t *testing.T) {
 	packet := NewResponseDiscoveryPacket(address, port)
 	packetString, err := packet.String()
 	if err != nil {
-		log.Fatalf("%v", err)
+		t.Fatalf("%v", err)
 	}
 	expectedString := "DYLLABLE-DISCOVERY\r\n" +
 		"TYPE: RUNNING-APP\r\n" +
@@ -61,7 +61,7 @@ func TestResponseDiscoveryPacket(t *testing.T) {
 
 	packetBytes, err := packet.Bytes()
 	if err != nil {
-		log.Fatalf("%v", err)
+		t.Fatalf("%v", err)
 	}
 	expectedBytes := []byte(expectedString)
 	if !bytes.Equal(packetBytes, expectedBytes) {
@@ -80,20 +80,20 @@ func TestParseRequestDiscoveryPacket(t *testing.T) {
 	packetBuffer := bytes.NewBuffer([]byte(packetString))
 	packet, err := ParsePacket(packetBuffer)
 	if err != nil {
-		log.Fatalf("%v", err)
+		t.Fatalf("%v", err)
 	}
 	discoveryPacket, ok := packet.(*DiscoveryPacket)
 	if !ok {
-		log.Fatalf("expected DiscoveryPacket object instead of %T", packet)
+		t.Fatalf("expected DiscoveryPacket object instead of %T", packet)
 	}
 	if !discoveryPacket.Address.Equal(address) {
-		log.Fatalf("expected parsed packet IP equals to \"127.0.0.1\" instead of \"%v\"", discoveryPacket.Address)
+		t.Fatalf("expected parsed packet IP equals to \"127.0.0.1\" instead of \"%v\"", discoveryPacket.Address)
 	}
 	if discoveryPacket.Port != port {
-		log.Fatalf("expected parsed packet port equals to \"8400\" instead of \"%v\"", discoveryPacket.Port)
+		t.Fatalf("expected parsed packet port equals to \"8400\" instead of \"%v\"", discoveryPacket.Port)
 	}
 	if discoveryPacket.Type != requestDiscoveryType {
-		log.Fatalf("expected parsed packet type equals to \"%s\" instead of \"%s\"", requestDiscoveryType, discoveryPacket.Type)
+		t.Fatalf("expected parsed packet type equals to \"%s\" instead of \"%s\"", requestDiscoveryType, discoveryPacket.Type)
 	}
 }
 
@@ -107,20 +107,20 @@ func TestParseResponseDiscoveryPacket(t *testing.T) {
 	packetBuffer := bytes.NewBuffer([]byte(packetString))
 	packet, err := ParsePacket(packetBuffer)
 	if err != nil {
-		log.Fatalf("%v", err)
+		t.Fatalf("%v", err)
 	}
 	discoveryPacket, ok := packet.(*DiscoveryPacket)
 	if !ok {
-		log.Fatalf("expected DiscoveryPacket object instead of %T", packet)
+		t.Fatalf("expected DiscoveryPacket object instead of %T", packet)
 	}
 	if !discoveryPacket.Address.Equal(address) {
-		log.Fatalf("expected parsed packet IP equals to \"127.0.0.1\" instead of \"%v\"", discoveryPacket.Address)
+		t.Fatalf("expected parsed packet IP equals to \"127.0.0.1\" instead of \"%v\"", discoveryPacket.Address)
 	}
 	if discoveryPacket.Port != port {
-		log.Fatalf("expected parsed packet port equals to \"8400\" instead of \"%v\"", discoveryPacket.Port)
+		t.Fatalf("expected parsed packet port equals to \"8400\" instead of \"%v\"", discoveryPacket.Port)
 	}
 	if discoveryPacket.Type != responseDiscoveryType {
-		log.Fatalf("expected parsed packet type equals to \"%s\" instead of \"%s\"", responseDiscoveryType, discoveryPacket.Type)
+		t.Fatalf("expected parsed packet type equals to \"%s\" instead of \"%s\"", responseDiscoveryType, discoveryPacket.Type)
 	}
 }
 
@@ -162,7 +162,7 @@ func TestParseInvalidDiscoveryPacket(t *testing.T) {
 		packetBuffer = bytes.NewBuffer([]byte(packetString))
 		_, err := ParsePacket(packetBuffer)
 		if err == nil {
-			log.Fatalf("following packet should be invalid: \n%s", packetString)
+			t.Fatalf("following packet should be invalid: \n%s", packetString)
 		}
 	}
 }
@@ -179,40 +179,40 @@ func TestReadUntil(t *testing.T) {
 	buffer = bytes.NewBuffer(bufferValue)
 	read, err = readUntil(buffer, delim)
 	if err != io.EOF {
-		log.Fatalf("1: when the delimiter is not in the buffer, the function should return io.EOF")
+		t.Fatalf("1: when the delimiter is not in the buffer, the function should return io.EOF")
 	}
 	if !bytes.Equal(read, bufferValue) {
-		log.Fatalf("2: when the delimiter is not in the buffer, the function should return the same value in the buffer.  %v != %v", read, bufferValue)
+		t.Fatalf("2: when the delimiter is not in the buffer, the function should return the same value in the buffer.  %v != %v", read, bufferValue)
 	}
 
-	log.Println("Test if the function allows call multiple times in the same buffer (already readed buffer)")
+	log.Println("Test if the function allows call multiple times in the same buffer (already read buffer)")
 	bufferValue = []byte("DYLLABLE-DISCOVERY\r\nTYPE: DISCOVERY\r\n\r\n")
 
 	buffer = bytes.NewBuffer(bufferValue)
 	read, err = readUntil(buffer, delim)
 	if err != nil {
-		log.Fatalf("3: %v", err)
+		t.Fatalf("3: %v", err)
 	}
 	if !bytes.Equal(read, []byte("DYLLABLE-DISCOVERY\r\n")) {
-		log.Fatalf("4: %#v != %#v", string(read), "DYLLABLE-DISCOVERY\r\n")
+		t.Fatalf("4: %#v != %#v", string(read), "DYLLABLE-DISCOVERY\r\n")
 	}
 	read, err = readUntil(buffer, delim)
 	if err != nil {
-		log.Fatalf("4: %v", err)
+		t.Fatalf("4: %v", err)
 	}
 	if !bytes.Equal(read, []byte("TYPE: DISCOVERY\r\n")) {
-		log.Fatalf("5: %#v != %#v", string(read), "TYPE: DISCOVERY\r\n")
+		t.Fatalf("5: %#v != %#v", string(read), "TYPE: DISCOVERY\r\n")
 	}
 	read, err = readUntil(buffer, delim)
 	if err != nil {
-		log.Fatalf("6: %v", err)
+		t.Fatalf("6: %v", err)
 	}
 	if !bytes.Equal(read, delim) {
-		log.Fatalf("7: %#v != %#v", string(read), string(delim))
+		t.Fatalf("7: %#v != %#v", string(read), string(delim))
 	}
 	read, err = readUntil(buffer, delim)
 	if err != io.EOF {
-		log.Fatalf("8: the function should return io.EOF when buffer has reached to the end")
+		t.Fatalf("8: the function should return io.EOF when buffer has reached to the end")
 	}
 }
 
@@ -228,14 +228,14 @@ func TestRequestActionPacket(t *testing.T) {
 	packet := NewRequestActionPacket(uint8(actionId), parameters)
 	packetString, err := packet.String()
 	if err != nil {
-		log.Fatalf("%v", err)
+		t.Fatalf("%v", err)
 	}
 
 	requestUUID := packet.RequestUUID.String()
 	match, _ := regexp.MatchString("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", requestUUID)
 
 	if !match {
-		log.Fatalf("RequestUUID is following the pattern \"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\". Current: %s", requestUUID)
+		t.Fatalf("RequestUUID is following the pattern \"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\". Current: %s", requestUUID)
 	}
 
 	expectedString := "DYLLABLE-ACTION-REQUEST\r\n" +
@@ -252,7 +252,7 @@ func TestRequestActionPacket(t *testing.T) {
 
 	packetBytes, err := packet.Bytes()
 	if err != nil {
-		log.Fatalf("%v", err)
+		t.Fatalf("%v", err)
 	}
 	expectedBytes := []byte(expectedString)
 	if !bytes.Equal(packetBytes, expectedBytes) {
@@ -264,14 +264,14 @@ func TestRequestActionPacket(t *testing.T) {
 	packet = NewRequestActionPacket(uint8(actionId), nil)
 	packetString, err = packet.String()
 	if err != nil {
-		log.Fatalf("%v", err)
+		t.Fatalf("%v", err)
 	}
 
 	requestUUID = packet.RequestUUID.String()
 	match, _ = regexp.MatchString("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", requestUUID)
 
 	if !match {
-		log.Fatalf("RequestUUID is following the pattern \"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\". Current: %s", requestUUID)
+		t.Fatalf("RequestUUID is following the pattern \"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\". Current: %s", requestUUID)
 	}
 
 	expectedString = "DYLLABLE-ACTION-REQUEST\r\n" +
@@ -286,7 +286,7 @@ func TestRequestActionPacket(t *testing.T) {
 
 	packetBytes, err = packet.Bytes()
 	if err != nil {
-		log.Fatalf("%v", err)
+		t.Fatalf("%v", err)
 	}
 	expectedBytes = []byte(expectedString)
 	if !bytes.Equal(packetBytes, expectedBytes) {
@@ -308,13 +308,13 @@ func TestResponseActionPacket(t *testing.T) {
 	packet := NewResponseActionPacket(requestUUID, false, content)
 	packetString, err := packet.String()
 	if err != nil {
-		log.Fatalf("%v", err)
+		t.Fatalf("%v", err)
 	}
 
 	match, _ := regexp.MatchString("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", requestUUID.String())
 
 	if !match {
-		log.Fatalf("RequestUUID is following the pattern \"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\". Current: %s", requestUUID)
+		t.Fatalf("RequestUUID is following the pattern \"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\". Current: %s", requestUUID)
 	}
 
 	expectedString := "DYLLABLE-ACTION-RESPONSE\r\n" +
@@ -331,7 +331,7 @@ func TestResponseActionPacket(t *testing.T) {
 
 	packetBytes, err := packet.Bytes()
 	if err != nil {
-		log.Fatalf("%v", err)
+		t.Fatalf("%v", err)
 	}
 	expectedBytes := []byte(expectedString)
 	if !bytes.Equal(packetBytes, expectedBytes) {
@@ -344,13 +344,13 @@ func TestResponseActionPacket(t *testing.T) {
 	packet = NewResponseActionPacket(requestUUID, true, nil)
 	packetString, err = packet.String()
 	if err != nil {
-		log.Fatalf("%v", err)
+		t.Fatalf("%v", err)
 	}
 
 	match, _ = regexp.MatchString("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", requestUUID.String())
 
 	if !match {
-		log.Fatalf("RequestUUID is following the pattern \"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\". Current: %s", requestUUID)
+		t.Fatalf("RequestUUID is following the pattern \"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\". Current: %s", requestUUID)
 	}
 
 	expectedString = "DYLLABLE-ACTION-RESPONSE\r\n" +
@@ -365,7 +365,7 @@ func TestResponseActionPacket(t *testing.T) {
 
 	packetBytes, err = packet.Bytes()
 	if err != nil {
-		log.Fatalf("%v", err)
+		t.Fatalf("%v", err)
 	}
 	expectedBytes = []byte(expectedString)
 	if !bytes.Equal(packetBytes, expectedBytes) {
@@ -386,7 +386,7 @@ func TestParseRequestActionPacket(t *testing.T) {
 
 	parametersJSON, err := json.Marshal(parameters)
 	if err != nil {
-		log.Fatalf("%v", err)
+		t.Fatalf("%v", err)
 	}
 
 	packetString := "DYLLABLE-ACTION-REQUEST\r\n" +
@@ -399,20 +399,20 @@ func TestParseRequestActionPacket(t *testing.T) {
 	packetBuffer := bytes.NewBuffer([]byte(packetString))
 	packet, err := ParsePacket(packetBuffer)
 	if err != nil {
-		log.Fatalf("%v", err)
+		t.Fatalf("%v", err)
 	}
 	actionPacket, ok := packet.(*RequestActionPacket)
 	if !ok {
-		log.Fatalf("expected RequestActionPacket object instead of %T", packet)
+		t.Fatalf("expected RequestActionPacket object instead of %T", packet)
 	}
 	if actionPacket.RequestUUID != requestUUID {
-		log.Fatalf("expected parsed packet REQUEST-UUID equals to \"%s\" instead of \"%s\"", requestUUID, actionPacket.RequestUUID)
+		t.Fatalf("expected parsed packet REQUEST-UUID equals to \"%s\" instead of \"%s\"", requestUUID, actionPacket.RequestUUID)
 	}
 	if actionPacket.ActionId != actionId {
-		log.Fatalf("expected parsed packet ACTION-ID equals to \"%d\" instead of \"%v\"", actionId, actionPacket.ActionId)
+		t.Fatalf("expected parsed packet ACTION-ID equals to \"%d\" instead of \"%v\"", actionId, actionPacket.ActionId)
 	}
 	if !reflect.DeepEqual(parameters, actionPacket.Parameters) {
-		log.Fatalf("expected parsed packet paramaters equals to \"%s\" instead of \"%v\"", string(parametersJSON), actionPacket.Parameters)
+		t.Fatalf("expected parsed packet paramaters equals to \"%s\" instead of \"%v\"", string(parametersJSON), actionPacket.Parameters)
 	}
 }
 
@@ -428,17 +428,17 @@ func TestParseRequestActionPacketWithoutParameters(t *testing.T) {
 	packetBuffer := bytes.NewBuffer([]byte(packetString))
 	packet, err := ParsePacket(packetBuffer)
 	if err != nil {
-		log.Fatalf("%v", err)
+		t.Fatalf("%v", err)
 	}
 	actionPacket, ok := packet.(*RequestActionPacket)
 	if !ok {
-		log.Fatalf("expected RequestActionPacket object instead of %T", packet)
+		t.Fatalf("expected RequestActionPacket object instead of %T", packet)
 	}
 	if actionPacket.RequestUUID != requestUUID {
-		log.Fatalf("expected parsed packet REQUEST-UUID equals to \"%s\" instead of \"%s\"", requestUUID, actionPacket.RequestUUID)
+		t.Fatalf("expected parsed packet REQUEST-UUID equals to \"%s\" instead of \"%s\"", requestUUID, actionPacket.RequestUUID)
 	}
 	if actionPacket.ActionId != actionId {
-		log.Fatalf("expected parsed packet ACTION-ID equals to \"%d\" instead of \"%v\"", actionId, actionPacket.ActionId)
+		t.Fatalf("expected parsed packet ACTION-ID equals to \"%d\" instead of \"%v\"", actionId, actionPacket.ActionId)
 	}
 }
 
@@ -481,7 +481,7 @@ func TestParseInvalidRequestActionPacket(t *testing.T) {
 		packetBuffer = bytes.NewBuffer([]byte(packetString))
 		_, err := ParsePacket(packetBuffer)
 		if err == nil {
-			log.Fatalf("following packet should be invalid: \n%s", packetString)
+			t.Fatalf("following packet should be invalid: \n%s", packetString)
 		}
 	}
 }
@@ -502,7 +502,7 @@ func TestParseResponseActionPacket(t *testing.T) {
 
 	contentJSON, err := json.Marshal(content)
 	if err != nil {
-		log.Fatalf("%v", err)
+		t.Fatalf("%v", err)
 	}
 
 	for key, approved := range approvedValues {
@@ -516,20 +516,20 @@ func TestParseResponseActionPacket(t *testing.T) {
 		packetBuffer := bytes.NewBuffer([]byte(packetString))
 		packet, err := ParsePacket(packetBuffer)
 		if err != nil {
-			log.Fatalf("%v", err)
+			t.Fatalf("%v", err)
 		}
 		responsePacket, ok := packet.(*ResponseActionPacket)
 		if !ok {
-			log.Fatalf("expected ResponseActionPacket object instead of %T", packet)
+			t.Fatalf("expected ResponseActionPacket object instead of %T", packet)
 		}
 		if responsePacket.RequestUUID != requestUUID {
-			log.Fatalf("expected parsed packet REQUEST-UUID equals to \"%s\" instead of \"%s\"", requestUUID, responsePacket.RequestUUID)
+			t.Fatalf("expected parsed packet REQUEST-UUID equals to \"%s\" instead of \"%s\"", requestUUID, responsePacket.RequestUUID)
 		}
 		if responsePacket.Approved != approved {
-			log.Fatalf("expected parsed packet APPROVED equals to \"%v\" instead of \"%v\"", approved, responsePacket.Approved)
+			t.Fatalf("expected parsed packet APPROVED equals to \"%v\" instead of \"%v\"", approved, responsePacket.Approved)
 		}
 		if !reflect.DeepEqual(content, responsePacket.Content) {
-			log.Fatalf("expected parsed packet content equals to \"%s\" instead of \"%v\"", string(contentJSON), responsePacket.Content)
+			t.Fatalf("expected parsed packet content equals to \"%s\" instead of \"%v\"", string(contentJSON), responsePacket.Content)
 		}
 	}
 }
@@ -551,17 +551,17 @@ func TestParseResponseActionPacketWithoutContent(t *testing.T) {
 		packetBuffer := bytes.NewBuffer([]byte(packetString))
 		packet, err := ParsePacket(packetBuffer)
 		if err != nil {
-			log.Fatalf("%v", err)
+			t.Fatalf("%v", err)
 		}
 		responsePacket, ok := packet.(*ResponseActionPacket)
 		if !ok {
-			log.Fatalf("expected RequestActionPacket object instead of %T", packet)
+			t.Fatalf("expected RequestActionPacket object instead of %T", packet)
 		}
 		if responsePacket.RequestUUID != requestUUID {
-			log.Fatalf("expected parsed packet REQUEST-UUID equals to \"%s\" instead of \"%s\"", requestUUID, responsePacket.RequestUUID)
+			t.Fatalf("expected parsed packet REQUEST-UUID equals to \"%s\" instead of \"%s\"", requestUUID, responsePacket.RequestUUID)
 		}
 		if responsePacket.Approved != approved {
-			log.Fatalf("expected parsed packet APPROVED equals to \"%v\" instead of \"%v\"", approved, responsePacket.Approved)
+			t.Fatalf("expected parsed packet APPROVED equals to \"%v\" instead of \"%v\"", approved, responsePacket.Approved)
 		}
 	}
 }
@@ -613,7 +613,7 @@ func TestParseInvalidResponseActionPacket(t *testing.T) {
 		packetBuffer = bytes.NewBuffer([]byte(packetString))
 		_, err := ParsePacket(packetBuffer)
 		if err == nil {
-			log.Fatalf("following packet should be invalid: \n%s", packetString)
+			t.Fatalf("following packet should be invalid: \n%s", packetString)
 		}
 	}
 }
